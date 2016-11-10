@@ -33,6 +33,7 @@ EXTRA_MODULES=\
   Classes/UCDMIB/Component/MemSubsystem.pm \
   Classes/UCDMIB/Component/ProcessSubsystem.pm \
   Classes/UCDMIB/Component/SwapSubsystem.pm \
+  Classes/UCDMIB.pm \
   Classes/POLYCOMACCESSMANAGEMENTMIB/Component/EnvironmentalSubsystem.pm \
   Classes/POLYCOMACCESSMANAGEMENTMIB.pm \
   Classes/Polycom/WebSuite.pm \

@@ -7,6 +7,11 @@ sub init {
   $self->get_snmp_objects('UCD-SNMP-MIB', (qw(
       ssCpuUser ssCpuSystem ssCpuIdle ssCpuRawUser ssCpuRawSystem ssCpuRawIdle
       ssCpuRawNice ssCpuRawWait ssCpuRawKernel ssCpuRawInterrupt)));
+  foreach (qw(
+      ssCpuUser ssCpuSystem ssCpuIdle ssCpuRawUser ssCpuRawSystem ssCpuRawIdle
+      ssCpuRawNice ssCpuRawWait ssCpuRawKernel ssCpuRawInterrupt)) {
+    $self->{$_} = 0 if ! defined $self->{$_};
+  }
   $self->valdiff({name => 'cpu'}, qw(
       ssCpuRawUser ssCpuRawSystem ssCpuRawIdle ssCpuRawNice ssCpuRawWait
       ssCpuRawKernel ssCpuRawInterrupt));

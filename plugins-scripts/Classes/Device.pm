@@ -26,6 +26,9 @@ sub classify {
       } elsif ($self->implements_mib('POLYCOM-MCU-MIB')) {
         bless $self, 'Classes::Polycom::MCU';
         $self->debug('using Classes::Polycom::MCU');
+      } elsif ($self->implements_mib('UCD-SNMP-MIB')) {
+        bless $self, 'Classes::UCDMIB';
+        $self->debug('using Classes::Polycom::MCU');
       } else {
         if (my $class = $self->discover_suitable_class()) {
           bless $self, $class;
