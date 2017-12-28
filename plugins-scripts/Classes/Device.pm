@@ -7,13 +7,25 @@ sub classify {
   if (! ($self->opts->hostname || $self->opts->snmpwalk)) {
     $self->add_unknown('either specify a hostname or a snmpwalk file');
   } else {
-    $self->check_snmp_and_model();
+    if ($self->opts->servertype && $self->opts->servertype eq 'mobotix') {
+      $self->{productname} = "mobotix";
+      # http://cam102.hornafjordur.is/help/lang/de/help?cgi-image
+      eval "require LWP::UserAgent";
+      if ($@) {
+        $self->add_unknown("module LWP::UserAgent is not installed");
+      }
+    } else {
+      $self->check_snmp_and_model();
+    }
     if (! $self->check_messages()) {
       if ($self->opts->verbose && $self->opts->verbose) {
         printf "I am a %s\n", $self->{productname};
       }
       if ($self->opts->mode =~ /^my-/) {
         $self->load_my_extension();
+      } elsif ($self->{productname} =~ /mobotix/i) {
+        bless $self, 'Classes::Mobotix';
+        $self->debug('using Classes::Mobotix');
       } elsif ($self->implements_mib('POLYCOM-ACCESS-MANAGEMENT-MIB')) {
         bless $self, 'Classes::Polycom::RPAD';
         $self->debug('using Classes::Polycom::RPAD');
