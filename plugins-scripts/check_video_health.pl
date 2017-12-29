@@ -53,6 +53,13 @@ $plugin->add_mode(
     alias => ['phone-health'],
     help => 'Check the status of video/telephony',
 );
+$plugin->add_arg(
+    spec => 'ssl',
+    help => "--ssl
+ A flag which tells the plugin to connect using ssl",
+    required => 0,
+);
+
 $plugin->add_snmp_modes();
 $plugin->add_snmp_args();
 $plugin->add_default_args();

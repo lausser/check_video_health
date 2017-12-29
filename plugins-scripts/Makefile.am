@@ -46,6 +46,8 @@ EXTRA_MODULES=\
   Classes/DELLRACMIB.pm \
   Classes/ALARMMIB/Component/AlarmSubsystem.pm \
   Classes/ALARMMIB.pm \
+  Classes/Mobotix/Component/EnvironmentalSubsystem.pm \
+  Classes/Mobotix.pm \
   Classes/Device.pm
 
 SED=/bin/sed

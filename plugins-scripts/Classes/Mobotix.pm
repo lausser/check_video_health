@@ -1,4 +1,4 @@
-package Classes::UCDMIB;
+package Classes::Mobotix;
 our @ISA = qw(Classes::Device);
 use strict;
 

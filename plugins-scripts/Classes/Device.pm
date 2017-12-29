@@ -9,10 +9,13 @@ sub classify {
   } else {
     if ($self->opts->servertype && $self->opts->servertype eq 'mobotix') {
       $self->{productname} = "mobotix";
-      # http://cam102.hornafjordur.is/help/lang/de/help?cgi-image
       eval "require LWP::UserAgent";
       if ($@) {
         $self->add_unknown("module LWP::UserAgent is not installed");
+      }
+      eval "require HTML::HeadParser";
+      if ($@) {
+        $self->add_unknown("module HTML::HeadParser is not installed");
       }
     } else {
       $self->check_snmp_and_model();
