@@ -43,6 +43,7 @@ sub scrape_language {
   my ($self, $html) = @_;
   if ($html =~ /homepage__language="(.*)"/) {
     $self->{language} = $1;
+    $self->debug('page uses language '.$self->{language});
   }
 }
 
@@ -90,6 +91,7 @@ sub scrape_tables {
   $p->parse($html); # or filename
   foreach my $table (@tables) {
     foreach my $row (@{$table}) {
+      $self->debug($row->[0]." :\t".$row->[1]);
       $self->translate($row);
     }
   }
@@ -97,7 +99,24 @@ sub scrape_tables {
 
 sub translate {
   my ($self, $row) = @_;
-  my $labels = {
+  my $languages = {
+    'en' => {
+      'Model' => 'model',
+      'Factory IP Address' => 'serial',
+      'Hardware' => 'hardware',
+      'Image Sensor' => 'sensor',
+      'Software' => 'software',
+      'Current Uptime' => 'uptime',
+      'Camera Name' => 'camera_name',
+      'Statistics' => 'statistics',
+      'Current Usage' => 'usage',
+      'Max. Size' => 'max_usage',
+      'PIR Level' => 'pir_level',
+      'Internal Temperature' => 'temperature',
+      'Average Brightness' => 'avg_brightness',
+      'Current Frame Rate' => 'frame_rate',
+      #'Aktive Clients' => 'clients',
+    },
     'de' => {
       'Modell' => 'model',
       'Seriennummer' => 'serial',
@@ -105,9 +124,24 @@ sub translate {
       'Bildsensor' => 'sensor',
       'Software' => 'software',
       'Laufzeit seit Neustart' => 'uptime',
+      'Kameraname' => 'camera_name',
+      'Statistik' => 'statistics',
+      'Aktueller Speicherbedarf' => 'usage',
+      'Maximalgr�e' => 'max_usage',
+      'Beleuchtung' => 'pir_level',
+      'Kameratemperatur' => 'temperature',
+      'Helligkeit' => 'avg_brightness',
+      'Akt. Bilderzeugungsrate' => 'frame_rate',
+      'Aktive Clients' => 'clients',
     },
   };
-  if (exists $labels->{$self->{language}}->{$row->[0]}) {
-    $self->{$labels->{$self->{language}}->{$row->[0]}} = $row->[1];
+  my $values = {
+    'en' => {
+    },
+    'de' => {
+    },
+  };
+  if (exists $languages->{$self->{language}}->{$row->[0]}) {
+    $self->{$languages->{$self->{language}}->{$row->[0]}} = $row->[1];
   }
 }
