@@ -6,32 +6,19 @@ sub init {
   my $self = shift;
   my $ua = LWP::UserAgent->new;
   $ua->timeout(10);
-  printf "ssl %s\n", Data::Dumper::Dumper($self->opts->ssl);
-  printf "port %s\n", Data::Dumper::Dumper($self->opts->port);
-  printf "hostname %s\n", Data::Dumper::Dumper($self->opts->hostname);
   my $url = sprintf "http%s://%s%s/control/camerainfo",
   "",
   #($self->opts->ssl ? "s" : ""),
       $self->opts->hostname,
       ($self->opts->port != 161 ? ":".$self->opts->port : "");
-  printf "url %s\n", Data::Dumper::Dumper($url);
   my $response = $ua->get($url);
-  #printf "response %s\n", Data::Dumper::Dumper($response);
   if ($response->is_success) {
 	  #print "succes".$response->decoded_content;  # or whatever
   } else {
-     printf "fail\n";
-     die $response->status_line;
+     $self->add_unknown($response->status_line);
   }
-  printf "dorsch\n";
   $self->scrape_language($response->decoded_content);
   $self->scrape_tables($response->decoded_content);
-  printf "%s\n", Data::Dumper::Dumper($self);
-  # lwp
-  # http://www.perlmonks.org/?node_id=52180
-  #
-  #
-
 }
 
 sub check {
@@ -127,7 +114,7 @@ sub translate {
       'Kameraname' => 'camera_name',
       'Statistik' => 'statistics',
       'Aktueller Speicherbedarf' => 'usage',
-      'Maximalgr�e' => 'max_usage',
+      'Maximalgröße' => 'max_usage',
       'Beleuchtung' => 'pir_level',
       'Kameratemperatur' => 'temperature',
       'Helligkeit' => 'avg_brightness',
@@ -139,9 +126,37 @@ sub translate {
     'en' => {
     },
     'de' => {
+      'uptime' => sub { my ($txt) = @_;
+          return $1*86400 + $2*3600+$3*60+$4 if $txt =~ /(\d+) Tage (\d+):(\d+):(\d+)/;
+          return $1*3600+$2*60+$3 if $txt =~ /(\d+):(\d+):(\d+)/;
+	  return $txt; },
+      'statistics' => sub { my ($txt) = @_;
+          my $stats = {};
+          $stats->{loss} = $1 if $txt =~ /([\d\.]+)%/;
+	  return $stats; },
+      'temperature' => sub { my ($txt) = @_;
+          return $1 if $txt =~ /([\-\d\.]+)&deg;C/; return $txt; },
+      'frame_rate' => sub { my ($txt) = @_;
+          return $1 if $txt =~ /([\d]+) B\/s/; return $txt; },
+      'clients' => sub { my ($txt) = @_;
+          my $stats = {};
+          $stats->{live} = $1 if $txt =~ /([\d]+) Live/;
+          $stats->{play} = $1 if $txt =~ /([\d]+) Wiedergabe/;
+	  return $stats; },
     },
   };
   if (exists $languages->{$self->{language}}->{$row->[0]}) {
-    $self->{$languages->{$self->{language}}->{$row->[0]}} = $row->[1];
+    my $universal_label = $languages->{$self->{language}}->{$row->[0]};
+    if (exists $values->{$self->{language}}->{$universal_label}) {
+      $self->{$universal_label} = $values->{$self->{language}}->{$universal_label}($row->[1]);
+      if (ref($self->{$universal_label}) eq "HASH") {
+        foreach (keys %{$self->{$universal_label}}) {
+	  $self->{$universal_label.'_'.$_} = $self->{$universal_label}->{$_};
+	}
+	delete $self->{$universal_label};
+      }
+    } else {
+      $self->{$universal_label} = $row->[1];
+    }
   }
 }
