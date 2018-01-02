@@ -17,6 +17,10 @@ sub classify {
       if ($@) {
         $self->add_unknown("module HTML::HeadParser is not installed");
       }
+      eval "require HTTP::Request::Common";
+      if ($@) {
+        $self->add_unknown("module HTTP::Request::Common is not installed");
+      }
     } else {
       $self->check_snmp_and_model();
     }

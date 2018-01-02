@@ -1,16 +1,4 @@
-package MY::UserAgent;
-use strict;
-use warnings;
-use base 'LWP::UserAgent';
- 
-sub get_basic_credentials {
-    printf "gbc %s\n", Data::Dumper::Dumper(\@_);
-    #my ($self, $realm, $url) = @_;
-    
-    #return 'szabgab', '**********';
-}
-
-package Classes::Mobotix::Component::EnvironmentalSubsystem;
+package Classes::Mobotix::Component::VideoSubsystem;
 our @ISA = qw(Monitoring::GLPlugin::SNMP::Item);
 use strict;
 
@@ -18,19 +6,15 @@ sub init {
   my $self = shift;
   my $ua = LWP::UserAgent->new;
   $ua->timeout(10);
-  my $url = sprintf "http%s://%s%s/control/camerainfo",
+  my $url = sprintf "http%s://%s%s/record/current.jpg",
   "",
   #($self->opts->ssl ? "s" : ""),
       $self->opts->hostname,
       ($self->opts->port != 161 ? ":".$self->opts->port : "");
-  my $request = HTTP::Request::Common::GET($url);
-  $self->{response} = $ua->request($request);
-  $self->debug(sprintf "response code is %s", $self->{response}->code());
+  $self->{response} = $ua->get($url);
   if ($self->{response}->is_success) {
-  printf "fail\n";
     $self->{content_content} = $self->{response}->decoded_content;
   } else {
-  printf "success\n";
      $self->add_unknown($self->{response}->status_line);
   }
   $self->{content_type} = $self->{response}->header('content-type');
@@ -39,47 +23,22 @@ sub init {
 
 sub check {
   my $self = shift;
-  #printf "%s\n", Data::Dumper::Dumper($self);
-  if ($self->mode =~ /device::uptime/) {
-    bless $self, "Monitoring::GLPlugin::SNMP";
-    $self->{productname} = sprintf "%s, hw: %s, sw: %s",
-        $self->{camera_name}, $self->{hardware}, $self->{software};
-    $self->init();
-  } elsif ($self->mode =~ /device::hardware::health/) {
-    $self->add_info(sprintf "storage usage is %.2f%%", $self->{usage});
+  if ($self->mode =~ /device::videophone::health/) {
+    $self->add_info(sprintf "image type is %s", $self->{content_type});
     $self->add_ok();
-    $self->add_perfdata(
-        label => "storage_usage",
-	value => $self->{usage},
-	uom => '%',
-    );
-    if (exists $self->{temperature_int}) {
-      $self->add_info(sprintf "internal temperature is %dC", $self->{temperature_int});
+    if ($self->{content_type} !~ /(jpeg|jpg)/) {
+  printf "%s\n", Data::Dumper::Dumper($self);
+      $self->add_critical(sprintf "received content_type %s instead of image/jpeg",
+          $self->{content_type});
+	  printf "%s\n", Data::Dumper::Dumper($self->{content_content});
+    } elsif (exists $self->{content_size}) {
+      $self->add_info(sprintf "size is %db", $self->{content_size});
       $self->add_ok();
       $self->add_perfdata(
-          label => "internal_temperature",
-	  value => $self->{temperature_int},
+          label => "image_size",
+	  value => $self->{content_size},
       );
     }
-    if (exists $self->{temperature_amb}) {
-      $self->add_info(sprintf "ambient temperature is %dC", $self->{temperature_amb});
-      $self->add_ok();
-      $self->add_perfdata(
-          label => "ambient_temperature",
-	  value => $self->{temperature_amb},
-      );
-    }
-    if (exists $self->{frame_rate}) {
-      $self->add_info(sprintf "%d frames/s", $self->{frame_rate});
-      $self->add_ok();
-      $self->add_perfdata(
-          label => "frame_rate",
-	  value => $self->{frame_rate},
-      );
-    }
-  } elsif ($self->mode =~ /device::videophone::health/) {
-  } else {
-    $self->add_info(sprintf 'identity status is %s', $self->{identityStatus});
   }
 }
 

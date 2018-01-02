@@ -47,6 +47,7 @@ EXTRA_MODULES=\
   Classes/ALARMMIB/Component/AlarmSubsystem.pm \
   Classes/ALARMMIB.pm \
   Classes/Mobotix/Component/EnvironmentalSubsystem.pm \
+  Classes/Mobotix/Component/VideoSubsystem.pm \
   Classes/Mobotix.pm \
   Classes/Device.pm
 
