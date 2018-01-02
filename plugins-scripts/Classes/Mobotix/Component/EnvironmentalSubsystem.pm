@@ -27,19 +27,19 @@ sub init {
   $self->{response} = $ua->request($request);
   $self->debug(sprintf "response code is %s", $self->{response}->code());
   if ($self->{response}->is_success) {
-  printf "fail\n";
     $self->{content_content} = $self->{response}->decoded_content;
+    $self->{content_type} = $self->{response}->header('content-type');
+    $self->{content_size} = $self->{response}->header('Content-Length');
+    $self->scrape_tables();
   } else {
-  printf "success\n";
      $self->add_unknown($self->{response}->status_line);
   }
-  $self->{content_type} = $self->{response}->header('content-type');
-  $self->{content_size} = $self->{response}->header('Content-Length');
 }
 
 sub check {
   my $self = shift;
-  #printf "%s\n", Data::Dumper::Dumper($self);
+  return if $self->check_messages();
+  printf "%s\n", Data::Dumper::Dumper($self);
   if ($self->mode =~ /device::uptime/) {
     bless $self, "Monitoring::GLPlugin::SNMP";
     $self->{productname} = sprintf "%s, hw: %s, sw: %s",
@@ -84,15 +84,15 @@ sub check {
 }
 
 sub scrape_language {
-  my ($self, $html) = @_;
-  if ($html =~ /homepage__language="(.*)"/) {
+  my ($self) = @_;
+  if ($self->{content_content} =~ /homepage__language="(.*)"/) {
     $self->{language} = $1;
     $self->debug('page uses language '.$self->{language});
   }
 }
 
 sub scrape_tables {
-  my ($self, $html) = @_;
+  my ($self) = @_;
   my %inside = ();
   my $tbl = -1; my $col; my $row;
   my @tables = ();
@@ -132,7 +132,8 @@ sub scrape_tables {
     ],      
     }
   );
-  $p->parse($html); # or filename
+  $p->parse($self->{content_content}); # or filename
+  $self->scrape_language();
   foreach my $table (@tables) {
     foreach my $row (@{$table}) {
       $self->debug($row->[0]." :\t".$row->[1]);
