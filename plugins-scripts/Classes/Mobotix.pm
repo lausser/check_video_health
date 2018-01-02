@@ -105,3 +105,119 @@ sub init {
   }
 }
 
+sub scrape_language {
+  my ($self) = @_;
+  if ($self->{content_content} =~ /homepage__language="(.*)"/) {
+    $self->{language} = $1;
+    $self->debug('page uses language '.$self->{language});
+  }
+}
+
+sub scrape_tables {
+  my ($self) = @_;
+  my %inside = ();
+  my $tbl = -1; my $col; my $row;
+  my @tables = ();
+
+  my $p = HTML::Parser->new(
+    handlers => {
+        start => [
+            sub {
+              my $tag  = shift;
+              $inside{$tag} = 1;
+              if ($tag eq 'tbody'){
+                ++$tbl; $row = -1;
+              } elsif ($tag eq 'tr' && $inside{'tbody'}){
+                ++$row; $col = -1;
+              } elsif ($tag eq 'td' && $inside{'tbody'}){
+                ++$col;
+                $tables[$tbl][$row][$col] = ''; # or undef
+              }
+            },
+            'tagname'
+        ],
+        end => [
+            sub {
+              my $tag = shift;
+              $inside{$tag} = 0;
+            },
+            'tagname'
+        ],
+        text => [
+            sub {
+              my $str = shift;
+              if ($inside{'td'} && $inside{'tbody'}){
+                $tables[$tbl][$row][$col] = $str;
+              }
+            },
+            'text'
+        ],
+    }
+  );
+  my $t = HTML::Parser->new(
+    handlers => {
+        start => [
+            sub {
+              my $tag  = shift;
+              $inside{$tag} = 1;
+              if ($tag eq 'table'){
+                ++$tbl; $row = -1;
+              } elsif ($tag eq 'tr' && $inside{'table'}){
+                ++$row; $col = -1;
+              } elsif ($tag eq 'td' && $inside{'table'}){
+                ++$col;
+                $tables[$tbl][$row][$col] = ''; # or undef
+              }
+            },
+            'tagname'
+        ],
+        end => [
+            sub {
+              my $tag = shift;
+              $inside{$tag} = 0;
+            },
+            'tagname'
+        ],
+        text => [
+            sub {
+              my $str = shift;
+              if ($inside{'td'} && $inside{'table'}){
+                $tables[$tbl][$row][$col] = $str;
+              }
+            },
+            'text'
+        ],
+    }
+  );
+  $p->parse($self->{content_content});
+  $t->parse($self->{content_content}) if ! @tables;
+  $self->scrape_language();
+printf "%s\n", Data::Dumper::Dumper(\@tables);
+  foreach my $table (@tables) {
+    foreach my $row (@{$table}) {
+      next if ref($row) eq "SCALAR" and ! defined $row;
+      $self->debug($row->[0]." :\t".$row->[1]);
+      $self->translate($row);
+    }
+  }
+}
+
+sub translate {
+  my ($self, $row) = @_;
+  my $lang = $self->{language};
+  if (exists $Classes::Mobotix::caminfos->{$lang}->{$row->[0]}) {
+    my $label = $Classes::Mobotix::caminfos->{$lang}->{$row->[0]};
+    if (exists $Classes::Mobotix::caminfo_values->{$lang}->{$label}) {
+      $self->{$label} = $Classes::Mobotix::caminfo_values->{$lang}->{$label}($row->[1]);
+      if (ref($self->{$label}) eq "HASH") {
+        foreach (keys %{$self->{$label}}) {
+          $self->{$label.'_'.$_} = $self->{$label}->{$_};
+        }
+        delete $self->{$label};
+      }
+    } else {
+      $self->{$label} = $row->[1];
+    }
+  }
+}
+
