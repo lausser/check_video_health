@@ -27,7 +27,7 @@ sub init {
 sub check {
   my $self = shift;
   return if $self->check_messages();
-  printf "%s\n", Data::Dumper::Dumper($self);
+  #printf "%s\n", Data::Dumper::Dumper($self);
   if ($self->mode =~ /device::uptime/) {
     bless $self, "Monitoring::GLPlugin::SNMP";
     $self->{productname} = sprintf "%s, hw: %s, sw: %s",

@@ -19,6 +19,7 @@ sub init {
   }
   $self->{content_type} = $self->{response}->header('content-type');
   $self->{content_size} = $self->{response}->header('Content-Length');
+  delete $self->{response};
 }
 
 sub check {
@@ -27,10 +28,8 @@ sub check {
     $self->add_info(sprintf "image type is %s", $self->{content_type});
     $self->add_ok();
     if ($self->{content_type} !~ /(jpeg|jpg)/) {
-  printf "%s\n", Data::Dumper::Dumper($self);
       $self->add_critical(sprintf "received content_type %s instead of image/jpeg",
           $self->{content_type});
-	  printf "%s\n", Data::Dumper::Dumper($self->{content_content});
     } elsif (exists $self->{content_size}) {
       $self->add_info(sprintf "size is %db", $self->{content_size});
       $self->add_ok();
@@ -38,83 +37,8 @@ sub check {
           label => "image_size",
 	  value => $self->{content_size},
       );
+      delete $self->{content_content};
     }
   }
 }
 
-sub scrape_language {
-  my ($self, $html) = @_;
-  if ($html =~ /homepage__language="(.*)"/) {
-    $self->{language} = $1;
-    $self->debug('page uses language '.$self->{language});
-  }
-}
-
-sub scrape_tables {
-  my ($self, $html) = @_;
-  my %inside = ();
-  my $tbl = -1; my $col; my $row;
-  my @tables = ();
-  
-  my $p = HTML::Parser->new(
-    handlers => {
-    start => [
-        sub {
-          my $tag  = shift;
-          $inside{$tag} = 1; 
-          if ($tag eq 'tbody'){
-            ++$tbl; $row = -1;
-          } elsif ($tag eq 'tr' && $inside{'tbody'}){
-            ++$row; $col = -1;
-          } elsif ($tag eq 'td' && $inside{'tbody'}){
-            ++$col;
-            $tables[$tbl][$row][$col] = ''; # or undef
-          }
-        },
-        'tagname'
-    ],
-    end => [
-        sub {
-          my $tag = shift;
-          $inside{$tag} = 0;
-        },
-        'tagname'
-    ],
-    text => [
-        sub {
-          my $str = shift;
-          if ($inside{'td'} && $inside{'tbody'}){
-            $tables[$tbl][$row][$col] = $str;
-          }
-        },
-        'text'
-    ],      
-    }
-  );
-  $p->parse($html); # or filename
-  foreach my $table (@tables) {
-    foreach my $row (@{$table}) {
-      $self->debug($row->[0]." :\t".$row->[1]);
-      $self->translate($row);
-    }
-  }
-}
-
-sub translate {
-  my ($self, $row) = @_;
-  my $lang = $self->{language};
-  if (exists $Classes::Mobotix::caminfos->{$lang}->{$row->[0]}) {
-    my $label = $Classes::Mobotix::caminfos->{$lang}->{$row->[0]};
-    if (exists $Classes::Mobotix::caminfo_values->{$lang}->{$label}) {
-      $self->{$label} = $Classes::Mobotix::caminfo_values->{$lang}->{$label}($row->[1]);
-      if (ref($self->{$label}) eq "HASH") {
-        foreach (keys %{$self->{$label}}) {
-	  $self->{$label.'_'.$_} = $self->{$label}->{$_};
-	}
-	delete $self->{$label};
-      }
-    } else {
-      $self->{$label} = $row->[1];
-    }
-  }
-}

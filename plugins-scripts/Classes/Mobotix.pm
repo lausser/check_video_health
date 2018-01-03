@@ -31,6 +31,7 @@ use strict;
       'Kameraname' => 'camera_name',
       'Statistik' => 'statistics',
       'Aktueller Speicherbedarf' => 'usage',
+      'Aktueller Speicherverbrauch' => 'usage',
       'Maximalgröße' => 'max_usage',
       'Beleuchtung' => 'pir_level',
       'Kameratemperatur' => 'temperature_int',
@@ -51,18 +52,22 @@ use strict;
           $stats->{loss} = $1 if $txt =~ /([\d\.]+)%/;
           return $stats; },
       'temperature_int' => sub { my ($txt) = @_;
-          return $1 if $txt =~ /([\-\d\.]+)&deg;C/; return $txt; },
+          return $1 if $txt =~ /([\-\d\.]+)&deg;C/;
+	  return $txt; },
       'temperature_amb' => sub { my ($txt) = @_;
-          return $1 if $txt =~ /([\-\d\.]+)&deg;C/; return $txt; },
+          return $1 if $txt =~ /([\-\d\.]+)&deg;C/;
+	  return $txt; },
       'frame_rate' => sub { my ($txt) = @_;
-          return $1 if $txt =~ /([\d]+) B\/s/; return $txt; },
+          return $1 if $txt =~ /([\d]+) B\/s/;
+	  return $txt; },
       'clients' => sub { my ($txt) = @_;
           my $stats = {};
           $stats->{live} = $1 if $txt =~ /([\d]+) Live/;
           $stats->{play} = $1 if $txt =~ /([\d]+) Wiedergabe/;
           return $stats; },
       'usage' => sub { my ($txt) = @_;
-          return $1 if $txt =~ /\(([\d\.]+)%\)/; return $txt; },
+          return $1 if $txt =~ /\(([\d\.]+)%\)/;
+	  return $txt; },
     },
     'de' => {
       'uptime' => sub { my ($txt) = @_;
@@ -74,18 +79,23 @@ use strict;
           $stats->{loss} = $1 if $txt =~ /([\d\.]+)%/;
           return $stats; },
       'temperature_int' => sub { my ($txt) = @_;
-          return $1 if $txt =~ /([\-\d\.]+)&deg;C/; return $txt; },
+          return $1 if $txt =~ /([\-\d\.]+)&deg;C/;
+	  return $txt; },
       'temperature_amb' => sub { my ($txt) = @_;
-          return $1 if $txt =~ /([\-\d\.]+)&deg;C/; return $txt; },
+          return $1 if $txt =~ /([\-\d\.]+)&deg;C/;
+	  return $txt; },
       'frame_rate' => sub { my ($txt) = @_;
-          return $1 if $txt =~ /([\d]+) B\/s/; return $txt; },
+          return $1 if $txt =~ /([\d]+) B\/s/;
+          return $1 if $txt =~ /([\d\.]+) Hz/;
+	  return $txt; },
       'clients' => sub { my ($txt) = @_;
           my $stats = {};
           $stats->{live} = $1 if $txt =~ /([\d]+) Live/;
           $stats->{play} = $1 if $txt =~ /([\d]+) Wiedergabe/;
           return $stats; },
       'usage' => sub { my ($txt) = @_;
-          return $1 if $txt =~ /\(([\d\.]+)%\)/; return $txt; },
+          return $1 if $txt =~ /\(([\d\.]+)%\)/;
+	  return $txt; },
     },
   };
 }
@@ -192,10 +202,9 @@ sub scrape_tables {
   $p->parse($self->{content_content});
   $t->parse($self->{content_content}) if ! @tables;
   $self->scrape_language();
-printf "%s\n", Data::Dumper::Dumper(\@tables);
   foreach my $table (@tables) {
     foreach my $row (@{$table}) {
-      next if ref($row) eq "SCALAR" and ! defined $row;
+      next if ! defined $row;
       $self->debug($row->[0]." :\t".$row->[1]);
       $self->translate($row);
     }
