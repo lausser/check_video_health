@@ -1,29 +1,20 @@
 package Classes::Mobotix::Component::VideoSubsystem;
-our @ISA = qw(Monitoring::GLPlugin::SNMP::Item);
+our @ISA = qw(Monitoring::GLPlugin::SNMP::Item Classes::Mobotix);
 use strict;
 
 sub init {
   my $self = shift;
-  my $ua = LWP::UserAgent->new;
-  $ua->timeout(10);
-  my $url = sprintf "http%s://%s%s/record/current.jpg",
-  "",
-  #($self->opts->ssl ? "s" : ""),
-      $self->opts->hostname,
-      ($self->opts->port != 161 ? ":".$self->opts->port : "");
-  $self->{response} = $ua->get($url);
-  if ($self->{response}->is_success) {
-    $self->{content_content} = $self->{response}->decoded_content;
-  } else {
-     $self->add_unknown($self->{response}->status_line);
+#  $self->scrape_webpage("/record/current.jpg");
+  $self->scrape_webpage("/cgi-bin/image.jpg?error=empty");
+#  $self->scrape_webpage("/cgi-bin/image.jpg?error=content");
+  if (! $self->{content_type}) {
+    $self->{content_type} = "unknown/unknown";
   }
-  $self->{content_type} = $self->{response}->header('content-type');
-  $self->{content_size} = $self->{response}->header('Content-Length');
-  delete $self->{response};
 }
 
 sub check {
   my $self = shift;
+  return if $self->check_messages();
   if ($self->mode =~ /device::videophone::health/) {
     $self->add_info(sprintf "image type is %s", $self->{content_type});
     $self->add_ok();
@@ -39,6 +30,23 @@ sub check {
       );
       delete $self->{content_content};
     }
+  }
+}
+
+
+package Classes::Mobotix::Component::EnvironmentalSubsystem::ImageSetup;
+our @ISA = qw(Monitoring::GLPlugin::TableItem);
+use strict;
+
+sub check {
+  my ($self) = @_;
+  if (exists $self->{frame_rate}) {
+    $self->add_info(sprintf "%d frames/s", $self->{frame_rate});
+    $self->add_ok();
+    $self->add_perfdata(
+        label => "frame_rate",
+        value => $self->{frame_rate},
+    );
   }
 }
 
