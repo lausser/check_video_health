@@ -32,6 +32,7 @@ sub check {
         $self->{networking}->{camera_name} || "-noname-",
         $self->{system}->{hardware} || "-unknown-",
         $self->{system}->{software} || "-unknown-";
+    $self->{uptime} = $self->{system}->{uptime};
     $self->dump() if $self->opts->verbose >= 2;
     $self->init();
   } elsif ($self->mode =~ /device::hardware::health/) {

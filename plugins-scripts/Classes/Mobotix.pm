@@ -294,9 +294,10 @@ use Encode;
 }
 
 sub init {
-  my $self = shift;
+  my ($self) = @_;
   $self->override_opt("username", "admin") if ! $self->opts->username;
   $self->override_opt("authpassword", "meinsm") if ! $self->opts->authpassword;
+  $self->request_modules();
   if ($self->mode =~ /device::uptime/) {
     $self->analyze_and_check_environmental_subsystem("Classes::Mobotix::Component::EnvironmentalSubsystem");
   } elsif ($self->mode =~ /device::hardware::health/) {
@@ -306,6 +307,22 @@ sub init {
     $self->analyze_and_check_environmental_subsystem("Classes::Mobotix::Component::VideoSubsystem");
   } else {
     $self->no_such_mode();
+  }
+}
+
+sub request_modules {
+  my ($self) = @_;
+  eval "require LWP::UserAgent";
+  if ($@) {
+    $self->add_unknown("module LWP::UserAgent is not installed");
+  }
+  eval "require HTML::HeadParser";
+  if ($@) {
+    $self->add_unknown("module HTML::HeadParser is not installed");
+  }
+  eval "require HTTP::Request::Common";
+  if ($@) {
+    $self->add_unknown("module HTTP::Request::Common is not installed");
   }
 }
 
@@ -324,6 +341,11 @@ sub scrape_webpage {
   my $response = $ua->request($request);
   my $content = undef;
   $self->debug(sprintf "response code is %s", $response->code());
+  if (! $response->is_success && ($response->code() == 401 || $response->code() == 403)) {
+    $self->debug(sprintf "retry request as user %s", $self->opts->username());
+    $request->authorization_basic($self->opts->username(), $self->opts->authpassword());
+    $response = $ua->request($request);
+  }
   if ($response->is_success) {
     $self->scrape_encoding($response->content);
     if ($self->{encoding}) {
