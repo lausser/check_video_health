@@ -331,8 +331,8 @@ sub scrape_webpage {
   my $ua = LWP::UserAgent->new;
   $ua->timeout(10);
   my $url = sprintf "http%s://%s%s%s",
-      "",
-      #($self->opts->ssl ? "s" : ""),
+      #"",
+      ($self->opts->ssl ? "s" : ""),
       $self->opts->hostname,
       ($self->opts->port != 161 ? ":".$self->opts->port : ""),
       $path;
