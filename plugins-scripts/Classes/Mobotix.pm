@@ -27,6 +27,9 @@ use Encode;
         'Current Usage' => 'usage',
         'Max. Size' => 'max_usage',
       },
+      'recording_setup' => {
+        'Arm Recording' => 'recording',
+      },
       'sensors' => {
         'PIR Level' => 'pir_level',
         'Illumination' => 'illumination',
@@ -108,32 +111,43 @@ use Encode;
       'system' => {
         'Modèle' => 'model',
         'Numéro de série' => 'serial',
+        'N° de série' => 'serial',
         'Matériel' => 'hardware',
         'Image Sensor' => 'sensor',
-        'Version du logiciel' => 'software',
+        'Capteur d\'images' => 'sensor',
+        'Logiciel' => 'software',
         'Durée d\'exécution depuis le redémarrage' => 'uptime',
+        'Durée d\'exécution actuelle' => 'uptime',
       },
       'networking' => {
         'Nom de la caméra' => 'camera_name',
+        'Nom caméra' => 'camera_name',
       },
       'storage' => {
         'Type' => 'type',
         'Flash Wear' => 'wear',
+        'Utilisation du tampon temporaire' => 'wear',
         'Espace mémoire actuellement requis' => 'usage',
+        'Utilisation actuelle de la mémoire' => 'usage',
         'Taille maximum' => 'max_usage',
+      },
+      'recording_setup' => {
+        'Activer l\'enregistrement' => 'recording', # Activé Enabled oder Désactivé(e)
       },
       'sensors' => {
         'PIR-Schwellwert' => 'pir_level',
         'Eclairage' => 'illumination',
-        'Camera Temperature' => 'temperature_int',
+        'Température de la caméra' => 'temperature_int',
         'todo-Umgebungstemperatur' => 'temperature_amb',
       },
       'image_setup' => {
         'Luminosité moyenne' => 'avg_brightness',
+        'Luminosité' => 'avg_brightness',
         'Taux actuel de création d\'images' => 'frame_rate',
       },
       'web_and_net_access' => {
         'Active Clients' => 'clients',
+        'lients actifs' => 'clients',
       },
     },
 
@@ -180,16 +194,22 @@ use Encode;
     },
     'fr' => {
       'System' => 'system',
+      'Système' => 'system',
       'Réseau' => 'networking',
       'Routage' => 'routing',
       'Audio' => 'audio',
       'File Server / Flash Device' => 'storage',
+      'Serveur de fichiers / périphérique flash' => 'storage',
       'todo-Interner Ringpuffer' => 'storage',
       'Alarmes et actions' => 'event_action_setup',
+      'Configuration des événements et actions' => 'event_action_setup',
       'Enregistrement' => 'recording_setup',
+      'Configuration de l\'enregistrement' => 'recording_setup',
       'Capteurs' => 'sensors',
       'Paramètres de l\'image' => 'image_setup',
+      'Configuration d\'image' => 'image_setup',
       'Accès à Internet et au réseau' => 'web_and_net_access',
+      'Accès web et réseau' => 'web_and_net_access',
     },
   };
   our $caminfo_functions = {
@@ -232,6 +252,12 @@ use Encode;
       'illumination' => $caminfo_functions->{lux},
       'avg_brightness' => $caminfo_functions->{usage},
       'wear' => $caminfo_functions->{usage},
+      'recording' => sub { my ($txt) = @_;
+        return "enabled" if $txt eq "Enable";
+        return "enabled" if $txt eq "Enabled";
+        return "disabled" if $txt eq "Disabled";
+        return "disabled";
+      },
     },
     'de' => {
       'uptime' => sub { my ($txt) = @_;
@@ -281,14 +307,23 @@ use Encode;
       'frame_rate' => $caminfo_functions->{frame_rate},
       'clients' => sub { my ($txt) = @_;
           my $stats = {};
-          $stats->{live} = $1 if $txt =~ /([\d]+) Live/;
-          $stats->{play} = $1 if $txt =~ /([\d]+) Wiedergabe/;
+          $stats->{live} = $1 if $txt =~ /([\d]+) live/;
+          $stats->{play} = $1 if $txt =~ /([\d]+) playback/;
+          $stats->{live} = $1 if $txt =~ /([\d]+) chaînes en direct/;
+          $stats->{play} = $1 if $txt =~ /([\d]+) chaînes de lecture/;
           return $stats; },
       'usage' => $caminfo_functions->{usage},
       'pir_level' => $caminfo_functions->{usage},
       'illumination' => $caminfo_functions->{lux},
       'avg_brightness' => $caminfo_functions->{usage},
       'wear' => $caminfo_functions->{usage},
+      'recording' => sub { my ($txt) = @_;
+        return "enabled" if $txt eq "Enable";
+        return "enabled" if $txt eq "Enabled";
+        return "enabled" if $txt eq "Activé";
+        return "disabled" if $txt eq "Désactivé(e)";
+        return "disabled";
+      },
     },
   };
 }
@@ -329,6 +364,9 @@ sub request_modules {
 sub scrape_webpage {
   my ($self, $path) = @_;
   my $ua = LWP::UserAgent->new;
+  # PERL_LWP_SSL_VERIFY=0
+  # my $ua = LWP::UserAgent->new(ssl_opts => { verify_hostname => 0 });
+  # sonst 500
   $ua->timeout(10);
   my $url = sprintf "http%s://%s%s%s",
       #"",
@@ -364,8 +402,10 @@ sub scrape_webpage {
     if ($self->opts->verbose > 15) {
       $url =~ s/\//_/g;
       $url =~ s/:/_/g;
+      $url =~ s/\?.*//g;
       my $extension = $self->{content_type};
       $extension =~ s/.*\///g;
+      $extension =~ s/;.*//g;
       open INFO, sprintf "> walks/camerainfo_%s_%s.%s",
           $self->{language} ? $self->{language}:"500", $url, $extension;
       print INFO $self->{content_content} if exists $self->{content_content};
@@ -495,6 +535,7 @@ sub scrape_tables {
   $self->scrape_language();
   foreach my $table (@tables) {
     my $header = shift @tablenames;
+    $self->debug("found table ".$header);
 #printf "now table %s\n", $header;
     next if ! defined $header; # t-variante beginnt mit leerer table+undef-name
     foreach my $row (@{$table}) {
@@ -531,6 +572,7 @@ sub translate {
     } else {
       $self->{$table}->{$label} = defined $row->[1] ? $row->[1] : "-unknown-";
     }
+    $self->debug("scraped column ".$label);
   }
   else {
     # printf "nosuch label %s != %s\n", $row->[0], join("__", keys %{$Classes::Mobotix::caminfos->{$lang}->{$table}});

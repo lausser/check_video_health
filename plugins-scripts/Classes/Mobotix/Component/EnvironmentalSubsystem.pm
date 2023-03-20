@@ -15,11 +15,6 @@ sub init {
         Classes::Mobotix::Component::EnvironmentalSubsystem::Sensorpack->new(%{$self->{sensors}}));
     delete $self->{sensors};
   }
-  if (exists $self->{image_setup}) {
-    push(@{$self->{image_setups}},
-        Classes::Mobotix::Component::EnvironmentalSubsystem::ImageSetup->new(%{$self->{image_setup}}));
-    delete $self->{image_setup};
-  }
 #  printf "%s\n", Data::Dumper::Dumper($self);
 }
 
@@ -72,7 +67,7 @@ use strict;
 sub finish {
   my ($self) = @_;
   if (! $self->{type}) {
-    bless $self, "Classes::Mobotix::Component::EnvironmentalSubsystem::Storage::Ring";
+    bless $self, "Classes::Mobotix::Component::EnvironmentalSubsystem::Storage::RingBuffer";
   } elsif ($self->{type} =~ /cifs/i) {
     bless $self, "Classes::Mobotix::Component::EnvironmentalSubsystem::Storage::Cifs";
   } elsif ($self->{type} =~ /sd.*flash/i) {
@@ -83,7 +78,11 @@ sub finish {
 sub check {
   my ($self) = @_;
   if (exists $self->{usage}) {
-    $self->add_info(sprintf "storage usage is %.2f%%", $self->{usage});
+    if (ref($self) =~ /.*::Storage::(.*)/) {
+      $self->add_info(sprintf "%s storage usage is %.2f%%", lc $1, $self->{usage});
+    } else {
+      $self->add_info(sprintf "storage usage is %.2f%%", $self->{usage});
+    }
     $self->add_ok();
     $self->add_perfdata(
         label => "storage_usage",
@@ -93,7 +92,7 @@ sub check {
   }
 }
 
-package Classes::Mobotix::Component::EnvironmentalSubsystem::Storage::Ring;
+package Classes::Mobotix::Component::EnvironmentalSubsystem::Storage::RingBuffer;
 our @ISA = qw(Classes::Mobotix::Component::EnvironmentalSubsystem::Storage);
 use strict;
 

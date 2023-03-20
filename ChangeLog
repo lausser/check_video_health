@@ -1,3 +1,7 @@
+* 2023-03-20 1.2
+  update french kewords for mobotix
+* 2018-01-09 1.1.0.2
+  alarm if mobotix does not record
 * 2018-01-08 1.1.0.1
   fix --ssl for mobotix
 * 2018-01-04 1.1
